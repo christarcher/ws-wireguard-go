@@ -212,13 +212,18 @@ func (device *Device) handleDeviceLine(key, value string) error {
 			return ipcErrorf(ipc.IpcErrorInvalid, "failed to parse listen_port: %w", err)
 		}
 
-		// update port and rebind
-		device.log.Verbosef("UAPI: Updating listen port")
-
+		// Update the port and rebind, unless it is unchanged. wg setconf and
+		// syncconf always send listen_port, and rebinding drops every
+		// connection of a connection-oriented bind such as WebSocket.
 		device.net.Lock()
+		unchanged := device.net.port == uint16(port)
 		device.net.port = uint16(port)
 		device.net.Unlock()
+		if unchanged {
+			return nil
+		}
 
+		device.log.Verbosef("UAPI: Updating listen port")
 		if err := device.BindUpdate(); err != nil {
 			return ipcErrorf(ipc.IpcErrorPortInUse, "failed to set listen_port: %w", err)
 		}
