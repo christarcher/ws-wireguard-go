@@ -71,6 +71,14 @@ type PeekLookAtSocketFd interface {
 	PeekLookAtSocketFd6() (fd int, err error)
 }
 
+// DefaultEndpointer is implemented by Bind objects that can supply an endpoint
+// for peers that were configured without one, such as a WebSocket client that
+// always connects to the same server. DefaultEndpoint returns nil if there is
+// no such endpoint.
+type DefaultEndpointer interface {
+	DefaultEndpoint() Endpoint
+}
+
 // An Endpoint maintains the source/destination caching for a peer.
 //
 //	dst: the remote address of a peer ("endpoint" in uapi terminology)

@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/ipc"
 )
 
@@ -261,6 +262,13 @@ func (peer *ipcSetPeer) handlePostConfig() {
 	}
 	if peer.created {
 		peer.endpoint.disableRoaming = peer.device.net.brokenRoaming && peer.endpoint.val != nil
+	}
+	if de, ok := peer.device.net.bind.(conn.DefaultEndpointer); ok {
+		peer.endpoint.Lock()
+		if peer.endpoint.val == nil {
+			peer.endpoint.val = de.DefaultEndpoint()
+		}
+		peer.endpoint.Unlock()
 	}
 	if peer.device.isUp() {
 		peer.Start()
