@@ -1,0 +1,41 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2026 christarcher. All Rights Reserved.
+#
+# ws-wg-quick runs wg-quick(8) with ws-wireguard-go as the WireGuard
+# implementation, taking the same arguments.
+#
+# On Linux, wg-quick falls back to a userspace implementation only when the
+# kernel has no WireGuard module, and the module cannot speak WebSocket. This
+# wrapper hands wg-quick an ip(8) that starts ws-wireguard-go where wg-quick
+# would create a kernel interface; everything else is plain wg-quick. Elsewhere,
+# setting WG_QUICK_USERSPACE_IMPLEMENTATION is enough and works the same way.
+#
+# The transport is configured by the WG_WS_* environment variables, e.g.:
+#
+#   WG_WS_MODE=client WG_WS_URL=wss://vpn.example.com/wg ws-wg-quick up wg0
+#   WG_WS_MODE=server WG_WS_LISTEN=127.0.0.1 ws-wg-quick up wg0
+#
+# Set WS_WIREGUARD_GO to the daemon's path if it is not in $PATH.
+
+set -e
+
+[[ $UID == 0 ]] || { echo "$0: must be run as root" >&2; exit 1; }
+program=${WS_WIREGUARD_GO:-$(type -P ws-wireguard-go || true)}
+[[ -x $program ]] || { echo "$0: ws-wireguard-go not found; set WS_WIREGUARD_GO" >&2; exit 1; }
+real_ip=$(type -P ip) || { echo "$0: ip not found" >&2; exit 1; }
+type -P wg-quick >/dev/null || { echo "$0: wg-quick not found" >&2; exit 1; }
+
+shim=$(mktemp -d)
+trap 'rm -rf "$shim"' EXIT
+cat >"$shim/ip" <<EOF
+#!/bin/bash
+if [[ \$# -eq 6 && \$1 == link && \$2 == add && \$3 == dev && \$5 == type && \$6 == wireguard ]]; then
+	exec "$program" "\$4"
+fi
+exec "$real_ip" "\$@"
+EOF
+chmod +x "$shim/ip"
+
+PATH="$shim:$PATH" WG_QUICK_USERSPACE_IMPLEMENTATION="$program" wg-quick "$@"
