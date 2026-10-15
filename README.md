@@ -371,22 +371,11 @@ ip link set ws0 up
 
 ## License
 
-    Copyright (C) 2017-2025 WireGuard LLC. All Rights Reserved.
-    
-    Permission is hereby granted, free of charge, to any person obtaining a copy of
-    this software and associated documentation files (the "Software"), to deal in
-    the Software without restriction, including without limitation the rights to
-    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-    of the Software, and to permit persons to whom the Software is furnished to do
-    so, subject to the following conditions:
-    
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-    
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+本项目基于 [wireguard-go](https://git.zx2c4.com/wireguard-go) 修改，与原项目一样以 MIT 许可证发布，全文见 [LICENSE](LICENSE)：
+
+- wireguard-go 的原有代码：Copyright (C) 2017-2025 WireGuard LLC.
+- 本项目新增和修改的部分：Copyright (C) 2026 christarcher.
+
+仓库的第一个提交是原样导入的 wireguard-go（上游提交 `2631ce9`），之后的每个提交都是本项目的修改，与它对比即可看到相对上游的全部改动。
+
+“WireGuard” 和 WireGuard 标志是 Jason A. Donenfeld 的注册商标。本项目不是 WireGuard 官方项目，与 WireGuard 项目及其作者没有关联，也没有得到他们的认可或支持。

@@ -39,7 +39,7 @@ func printUsage() {
 
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
-		fmt.Printf("ws-wireguard-go v%s\n\nUserspace WireGuard daemon over WebSocket for %s-%s.\nBased on wireguard-go, information available at https://www.wireguard.com.\nCopyright (C) Jason A. Donenfeld <Jason@zx2c4.com>.\n", Version, runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("ws-wireguard-go v%s\n\nUserspace WireGuard daemon over WebSocket for %s-%s.\nBased on wireguard-go, information available at https://www.wireguard.com.\nCopyright (C) Jason A. Donenfeld <Jason@zx2c4.com>.\nCopyright (C) 2026 christarcher.\n", Version, runtime.GOOS, runtime.GOARCH)
 		return
 	}
 
