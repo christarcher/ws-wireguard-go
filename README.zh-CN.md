@@ -1,5 +1,7 @@
 # ws-wireguard-go：基于 WebSocket 的 WireGuard
 
+[English](README.md) | 简体中文
+
 ws-wireguard-go 是在 [wireguard-go](https://git.zx2c4.com/wireguard-go) 基础上修改的 WireGuard 用户态实现。它把 WireGuard 的传输层从 UDP 换成了 WebSocket：WireGuard 报文直接作为 WebSocket 消息收发，中间不再经过任何 UDP 套接字。它适合这样的场景：UDP 被封锁，或者目标机器只能通过 80/443 端口上的 HTTP(S) 反向代理 / CDN 访问。
 
 除了传输层，其余都与 wireguard-go 相同：同样的 Noise 握手与加密、计时器、TUN 设备和 UAPI 控制接口，照常用 `wg`、`wg-quick` 管理。
@@ -13,6 +15,7 @@ ws-wireguard-go 是在 [wireguard-go](https://git.zx2c4.com/wireguard-go) 基础
 - [注意事项](#注意事项)
 - [测试](#测试)
 - [代码结构](#代码结构)
+- [License](#license)
 
 ## 实现原理
 
@@ -71,13 +74,25 @@ wireguard-go 把协议和传输分得很清楚：`device` 包实现 WireGuard �
 
 ## 编译与安装
 
-需要 Go 1.23 或更高版本。
+编译需要 Go 1.23 或更高版本和 make：
 
 ```
+git clone https://github.com/christarcher/ws-wireguard-go.git
+cd ws-wireguard-go
 make            # 生成 ./ws-wireguard-go
 make install    # 安装 ws-wireguard-go 和 ws-wg-quick 到 /usr/bin（PREFIX、DESTDIR 可改）
 make test       # go test ./...
 ```
+
+运行时需要 [wireguard-tools](https://git.zx2c4.com/wireguard-tools) 中的 `wg`。使用 `ws-wg-quick` 还需要 wireguard-tools 中的 `wg-quick`，Linux 上还需要 iproute2 的 `ip`。
+
+### 平台
+
+| 平台 | 状态 |
+|---|---|
+| Linux | 已测试：单元测试、集成测试和 network namespace 端到端测试 |
+| macOS、FreeBSD、OpenBSD | 可以编译，尚未实测 |
+| Windows | 可以编译。与原版一样，`main_windows.go` 只是调试用的测试程序，运行时需要 [wintun.dll](https://www.wintun.net/) |
 
 ## 使用
 
@@ -367,6 +382,7 @@ ip link set ws0 up
 | `options.go`、`main.go`、`main_windows.go` | 命令行选项与环境变量 |
 | `conn/conn.go`、`device/uapi.go` | `conn.DefaultEndpointer`：没有 Endpoint 的 peer 使用客户端的服务端 URL；listen-port 不变时不重新绑定 |
 | `contrib/ws-wg-quick` | wg-quick 包装 |
+| `conn/wsbind/*_test.go`、`device/uapi_test.go` | 单元测试与集成测试 |
 | `tests/ws-netns.sh` | 端到端测试 |
 
 ## License
