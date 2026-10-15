@@ -8,6 +8,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -15,7 +16,7 @@ import (
 	"strconv"
 
 	"golang.org/x/sys/unix"
-	"golang.zx2c4.com/wireguard/conn"
+	"golang.zx2c4.com/wireguard/conn/wsbind"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
 	"golang.zx2c4.com/wireguard/tun"
@@ -33,62 +34,37 @@ const (
 )
 
 func printUsage() {
-	fmt.Printf("Usage: %s [-f/--foreground] INTERFACE-NAME\n", os.Args[0])
-}
-
-func warning() {
-	switch runtime.GOOS {
-	case "linux", "freebsd", "openbsd":
-		if os.Getenv(ENV_WG_PROCESS_FOREGROUND) == "1" {
-			return
-		}
-	default:
-		return
-	}
-
-	fmt.Fprintln(os.Stderr, "┌──────────────────────────────────────────────────────┐")
-	fmt.Fprintln(os.Stderr, "│                                                      │")
-	fmt.Fprintln(os.Stderr, "│   Running wireguard-go is not required because this  │")
-	fmt.Fprintln(os.Stderr, "│   kernel has first class support for WireGuard. For  │")
-	fmt.Fprintln(os.Stderr, "│   information on installing the kernel module,       │")
-	fmt.Fprintln(os.Stderr, "│   please visit:                                      │")
-	fmt.Fprintln(os.Stderr, "│         https://www.wireguard.com/install/           │")
-	fmt.Fprintln(os.Stderr, "│                                                      │")
-	fmt.Fprintln(os.Stderr, "└──────────────────────────────────────────────────────┘")
+	fmt.Fprintf(os.Stderr, "Usage: %s [-f/--foreground] [options] INTERFACE-NAME\n%s", os.Args[0], transportUsage)
 }
 
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
-		fmt.Printf("wireguard-go v%s\n\nUserspace WireGuard daemon for %s-%s.\nInformation available at https://www.wireguard.com.\nCopyright (C) Jason A. Donenfeld <Jason@zx2c4.com>.\n", Version, runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("ws-wireguard-go v%s\n\nUserspace WireGuard daemon over WebSocket for %s-%s.\nBased on wireguard-go, information available at https://www.wireguard.com.\nCopyright (C) Jason A. Donenfeld <Jason@zx2c4.com>.\n", Version, runtime.GOOS, runtime.GOARCH)
 		return
 	}
 
-	warning()
-
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.Usage = printUsage
 	var foreground bool
-	var interfaceName string
-	if len(os.Args) < 2 || len(os.Args) > 3 {
-		printUsage()
+	fs.BoolVar(&foreground, "f", false, "")
+	fs.BoolVar(&foreground, "foreground", false, "")
+	transportOptions := transportFlags(fs)
+	if err := fs.Parse(os.Args[1:]); err == flag.ErrHelp {
 		return
+	} else if err != nil {
+		os.Exit(ExitSetupFailed)
 	}
+	if fs.NArg() != 1 {
+		printUsage()
+		os.Exit(ExitSetupFailed)
+	}
+	interfaceName := fs.Arg(0)
 
-	switch os.Args[1] {
-
-	case "-f", "--foreground":
-		foreground = true
-		if len(os.Args) != 3 {
-			printUsage()
-			return
-		}
-		interfaceName = os.Args[2]
-
-	default:
-		foreground = false
-		if len(os.Args) != 2 {
-			printUsage()
-			return
-		}
-		interfaceName = os.Args[1]
+	bindOptions, err := transportOptions()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid transport options: %v\n", err)
+		printUsage()
+		os.Exit(ExitSetupFailed)
 	}
 
 	if !foreground {
@@ -145,7 +121,7 @@ func main() {
 		fmt.Sprintf("(%s) ", interfaceName),
 	)
 
-	logger.Verbosef("Starting wireguard-go version %s", Version)
+	logger.Verbosef("Starting ws-wireguard-go version %s", Version)
 
 	if err != nil {
 		logger.Errorf("Failed to create TUN device: %v", err)
@@ -222,7 +198,16 @@ func main() {
 		return
 	}
 
-	device := device.NewDevice(tdev, conn.NewDefaultBind(), logger)
+	bindOptions.Verbosef = logger.Verbosef
+	bindOptions.Errorf = logger.Errorf
+	bind, err := wsbind.New(bindOptions)
+	if err != nil {
+		logger.Errorf("Failed to create WebSocket bind: %v", err)
+		os.Exit(ExitSetupFailed)
+	}
+	logger.Verbosef("WebSocket transport in %v mode", bind.Mode())
+
+	device := device.NewDevice(tdev, bind, logger)
 
 	logger.Verbosef("Device started")
 

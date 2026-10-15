@@ -6,13 +6,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 
 	"golang.org/x/sys/windows"
 
-	"golang.zx2c4.com/wireguard/conn"
+	"golang.zx2c4.com/wireguard/conn/wsbind"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
 
@@ -25,10 +26,24 @@ const (
 )
 
 func main() {
-	if len(os.Args) != 2 {
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] INTERFACE-NAME\n%s", os.Args[0], transportUsage)
+	}
+	transportOptions := transportFlags(fs)
+	if err := fs.Parse(os.Args[1:]); err != nil {
 		os.Exit(ExitSetupFailed)
 	}
-	interfaceName := os.Args[1]
+	if fs.NArg() != 1 {
+		fs.Usage()
+		os.Exit(ExitSetupFailed)
+	}
+	interfaceName := fs.Arg(0)
+	bindOptions, err := transportOptions()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid transport options: %v\n", err)
+		os.Exit(ExitSetupFailed)
+	}
 
 	fmt.Fprintln(os.Stderr, "Warning: this is a test program for Windows, mainly used for debugging this Go package. For a real WireGuard for Windows client, the repo you want is <https://git.zx2c4.com/wireguard-windows/>, which includes this code as a module.")
 
@@ -36,7 +51,7 @@ func main() {
 		device.LogLevelVerbose,
 		fmt.Sprintf("(%s) ", interfaceName),
 	)
-	logger.Verbosef("Starting wireguard-go version %s", Version)
+	logger.Verbosef("Starting ws-wireguard-go version %s", Version)
 
 	tun, err := tun.CreateTUN(interfaceName, 0)
 	if err == nil {
@@ -49,7 +64,15 @@ func main() {
 		os.Exit(ExitSetupFailed)
 	}
 
-	device := device.NewDevice(tun, conn.NewDefaultBind(), logger)
+	bindOptions.Verbosef = logger.Verbosef
+	bindOptions.Errorf = logger.Errorf
+	bind, err := wsbind.New(bindOptions)
+	if err != nil {
+		logger.Errorf("Failed to create WebSocket bind: %v", err)
+		os.Exit(ExitSetupFailed)
+	}
+
+	device := device.NewDevice(tun, bind, logger)
 	err = device.Up()
 	if err != nil {
 		logger.Errorf("Failed to bring up device: %v", err)
