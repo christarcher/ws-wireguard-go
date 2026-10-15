@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2026 christarcher. All Rights Reserved.
+#
+# wg-quick@.service from wireguard-tools, but running ws-wg-quick. The
+# transport options of interface %i are read from /etc/wireguard/%i.ws, a file
+# of WG_WS_* variables, e.g.:
+#
+#   WG_WS_MODE=client
+#   WG_WS_URL=wss://vpn.example.com/wg
+#
+# make install substitutes the path to ws-wg-quick.
+
+[Unit]
+Description=WireGuard over WebSocket via ws-wg-quick for %I
+After=network-online.target nss-lookup.target
+Wants=network-online.target nss-lookup.target
+Documentation=https://github.com/christarcher/ws-wireguard-go
+Documentation=man:wg-quick(8)
+Documentation=man:wg(8)
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/wireguard/%i.ws
+ExecStart=/usr/bin/ws-wg-quick up %i
+ExecStop=/usr/bin/ws-wg-quick down %i
+ExecReload=/bin/bash -c 'exec /usr/bin/wg syncconf %i <(exec /usr/bin/wg-quick strip %i)'
+Environment=WG_ENDPOINT_RESOLUTION_RETRIES=infinity
+
+[Install]
+WantedBy=multi-user.target
