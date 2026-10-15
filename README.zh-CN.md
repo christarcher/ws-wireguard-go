@@ -80,7 +80,7 @@ wireguard-go 把协议和传输分得很清楚：`device` 包实现 WireGuard �
 git clone https://github.com/christarcher/ws-wireguard-go.git
 cd ws-wireguard-go
 make            # 生成 ./ws-wireguard-go
-make install    # 安装 ws-wireguard-go 和 ws-wg-quick 到 /usr/bin（PREFIX、DESTDIR 可改）
+make install    # 安装 ws-wireguard-go、ws-wg-quick 到 /usr/bin，以及 systemd 单元（PREFIX、DESTDIR 可改）
 make test       # go test ./...
 ```
 
@@ -281,25 +281,7 @@ ping 10.0.0.1        # 在客户端上
 
 ### 用 systemd 管理
 
-`/etc/systemd/system/ws-wg-quick@.service`。它是照官方 `wg-quick@.service` 写的，尚未在 systemd 上实测：
-
-```ini
-[Unit]
-Description=WireGuard over WebSocket via ws-wg-quick for %I
-After=network-online.target nss-lookup.target
-Wants=network-online.target nss-lookup.target
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-EnvironmentFile=/etc/wireguard/%i.ws
-ExecStart=/usr/bin/ws-wg-quick up %i
-ExecStop=/usr/bin/ws-wg-quick down %i
-ExecReload=/bin/bash -c 'exec /usr/bin/wg syncconf %i <(exec /usr/bin/wg-quick strip %i)'
-
-[Install]
-WantedBy=multi-user.target
-```
+[`contrib/ws-wg-quick@.service`](contrib/ws-wg-quick@.service) 是照官方 `wg-quick@.service` 写的 systemd 单元，用 ws-wg-quick 启停接口，并从 `/etc/wireguard/<接口名>.ws` 读取传输选项。本机有 systemd 单元目录时，`make install` 会一并安装它，并把其中 ws-wg-quick 的路径改成实际的安装位置；单元目录可以用 `SYSTEMDUNITDIR` 指定，`WITH_SYSTEMDUNITS=no` 则不安装。不用 `make install` 时，把它复制到 `/etc/systemd/system/`；如果 ws-wg-quick 不在 `/usr/bin`，要相应修改 `ExecStart` 和 `ExecStop`。
 
 ```
 systemctl daemon-reload
@@ -382,6 +364,7 @@ ip link set ws0 up
 | `options.go`、`main.go`、`main_windows.go` | 命令行选项与环境变量 |
 | `conn/conn.go`、`device/uapi.go` | `conn.DefaultEndpointer`：没有 Endpoint 的 peer 使用客户端的服务端 URL；listen-port 不变时不重新绑定 |
 | `contrib/ws-wg-quick` | wg-quick 包装 |
+| `contrib/ws-wg-quick@.service` | systemd 单元 |
 | `conn/wsbind/*_test.go`、`device/uapi_test.go` | 单元测试与集成测试 |
 | `tests/ws-netns.sh` | 端到端测试 |
 

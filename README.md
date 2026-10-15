@@ -80,7 +80,7 @@ Building needs Go 1.23 or later and make:
 git clone https://github.com/christarcher/ws-wireguard-go.git
 cd ws-wireguard-go
 make            # builds ./ws-wireguard-go
-make install    # installs ws-wireguard-go and ws-wg-quick into /usr/bin (PREFIX and DESTDIR can be set)
+make install    # installs ws-wireguard-go and ws-wg-quick into /usr/bin, plus the systemd unit (PREFIX and DESTDIR can be set)
 make test       # go test ./...
 ```
 
@@ -282,25 +282,7 @@ ping 10.0.0.1        # on the client
 
 ### Managing with systemd
 
-`/etc/systemd/system/ws-wg-quick@.service`, modeled on the official `wg-quick@.service` and not yet tested under systemd:
-
-```ini
-[Unit]
-Description=WireGuard over WebSocket via ws-wg-quick for %I
-After=network-online.target nss-lookup.target
-Wants=network-online.target nss-lookup.target
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-EnvironmentFile=/etc/wireguard/%i.ws
-ExecStart=/usr/bin/ws-wg-quick up %i
-ExecStop=/usr/bin/ws-wg-quick down %i
-ExecReload=/bin/bash -c 'exec /usr/bin/wg syncconf %i <(exec /usr/bin/wg-quick strip %i)'
-
-[Install]
-WantedBy=multi-user.target
-```
+[`contrib/ws-wg-quick@.service`](contrib/ws-wg-quick@.service) is a systemd unit modeled on the official `wg-quick@.service`. It brings the interface up and down with ws-wg-quick, and reads the transport options from `/etc/wireguard/<interface>.ws`. When the machine has a systemd unit directory, `make install` installs the unit there, with the path to ws-wg-quick set to where it was installed; set the directory with `SYSTEMDUNITDIR`, or skip the unit with `WITH_SYSTEMDUNITS=no`. Without `make install`, copy it to `/etc/systemd/system/`, and if ws-wg-quick is not in `/usr/bin`, change `ExecStart` and `ExecStop` to match.
 
 ```
 systemctl daemon-reload
@@ -383,6 +365,7 @@ ip link set ws0 up
 | `options.go`, `main.go`, `main_windows.go` | Command line options and environment variables |
 | `conn/conn.go`, `device/uapi.go` | `conn.DefaultEndpointer`: peers without an endpoint use the client's server URL; no rebind when the listen-port is unchanged |
 | `contrib/ws-wg-quick` | wg-quick wrapper |
+| `contrib/ws-wg-quick@.service` | systemd unit |
 | `conn/wsbind/*_test.go`, `device/uapi_test.go` | Unit and integration tests |
 | `tests/ws-netns.sh` | End-to-end test |
 
