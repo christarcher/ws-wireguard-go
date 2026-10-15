@@ -524,7 +524,7 @@ func (device *Device) BindUpdate() error {
 		go device.RoutineReceiveIncoming(batchSize, fn)
 	}
 
-	device.log.Verbosef("UDP bind has been updated")
+	device.log.Verbosef("Bind has been updated")
 	return nil
 }
 
